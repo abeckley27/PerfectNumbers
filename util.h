@@ -14,6 +14,14 @@ void printarray(int64_t* a, int64_t len) {
 	std::cout << std::endl;
 }
 
+void printarray(uint64_t* a, int64_t len) {
+	int_fast64_t i;
+	for (i = 0; i < len; i++) {
+		std::cout << a[i] << '\t';
+	}
+	std::cout << std::endl;
+}
+
 // This function allocates memory
 bool* run_sequential_sieve(const int64_t N) {
 	//bitmap for primality
@@ -46,9 +54,9 @@ int64_t primecount(bool* s, int64_t len) {
 }
 
 // This function allocates memory
-int64_t* bitmap_to_array(bool* s, int64_t len, int& olen) {
+uint64_t* bitmap_to_array(bool* s, int64_t len, int& olen) {
 	int64_t pcount = primecount(s, len);
-    int64_t* output = new int64_t[pcount];
+    uint64_t* output = new uint64_t[pcount];
 	int64_t i, j;
 	j = 0;
 
@@ -72,7 +80,7 @@ bool standalone_is_prime(int64_t n) {
     bool* s = run_sequential_sieve(root_n);
     const int64_t L1 = primecount(s, root_n + 1);
 	int x;
-    int64_t* prime_array = bitmap_to_array(s, root_n + 1, x);
+    uint64_t* prime_array = bitmap_to_array(s, root_n + 1, x);
     
     // check for prime divisors
     bool output = (n > 1) && ( (n & 1) || (n == 2) );
