@@ -2,6 +2,7 @@
 #define utility_fns_h
 
 #include <iostream>
+#include <cstdint>
 #include <cmath>
 
 // Prints an array to console, for debugging
@@ -45,7 +46,7 @@ int64_t primecount(bool* s, int64_t len) {
 }
 
 // This function allocates memory
-int64_t* bitmap_to_array(bool* s, int64_t len) {
+int64_t* bitmap_to_array(bool* s, int64_t len, int& olen) {
 	int64_t pcount = primecount(s, len);
     int64_t* output = new int64_t[pcount];
 	int64_t i, j;
@@ -58,6 +59,8 @@ int64_t* bitmap_to_array(bool* s, int64_t len) {
 		}
 	}
 
+	olen = pcount;
+
 	return output;
 }
 
@@ -68,7 +71,8 @@ bool standalone_is_prime(int64_t n) {
     const int32_t root_n = int32_t(ceil(sqrt(n)));
     bool* s = run_sequential_sieve(root_n);
     const int64_t L1 = primecount(s, root_n + 1);
-    int64_t* prime_array = bitmap_to_array(s, root_n + 1);
+	int x;
+    int64_t* prime_array = bitmap_to_array(s, root_n + 1, x);
     
     // check for prime divisors
     bool output = (n > 1) && ( (n & 1) || (n == 2) );
