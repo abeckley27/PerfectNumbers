@@ -28,14 +28,27 @@ int main(int argc, char* argv[]) {
     std::cout << "Found all primes below " << N << std::endl;
     std::cout << "Array length: " << primelen << std::endl;
 
+    /*
+    //Testing the prime sieve, if needed
+    for (int i = 0; i < 20; i++) {
+        std::cout << primearray[i] << ", ";
+    }
+    std::cout << '\n';
+    */
+
     std::ofstream f;
     f.open("PerfectNumbers.txt");
     
+    std::cout << "Mersenne prime \t Perfect number \n";
+
     for (int i = 0; i < 15; i++) {
         int64_t p = pow(2, primearray[i]) - 1;
         if (is_prime(p)) {
-            std::cout << std::fixed << p << '\t' << p * pow(2, primearray[i] - 1);
+            std::cout << p << '\t' << uint64_t(p * pow(2, primearray[i] - 1));
             std::cout << std::endl;
+
+            //f << std::fixed << p << '\t' << int64_t(p * pow(2, primearray[i] - 1));
+            //f << std::endl;
         }
     }
 
