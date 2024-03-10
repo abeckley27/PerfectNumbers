@@ -2,6 +2,7 @@
 #include <fstream>
 #include <algorithm>
 #include <list>
+#include <vector>
 #include <cstdio>
 #include "util.h"
 #include <omp.h>
@@ -65,11 +66,44 @@ bool is_prime_gmp(mpz_t n) {
     return output;
 }
 
+std::string output_perfnum( uint64_t p) {
+    //Initialize
+    mpz_t prime_factor;
+    mpz_init(prime_factor);
+    mpz_ui_pow_ui(prime_factor, 2, p);
+    mpz_sub_ui(prime_factor, prime_factor, 1);
+    mpz_t power_of_2;
+    mpz_init(power_of_2);
+    mpz_ui_pow_ui(power_of_2, 2, p - 1);
+
+    //Multiply
+    mpz_t perfect_number;
+    mpz_init(perfect_number);
+    mpz_mul(perfect_number, prime_factor, power_of_2);
+
+    //convert to a string
+    char* charpointer = mpz_get_str(NULL, 10, perfect_number);
+    return charpointer;
+
+    //clean up
+    mpz_clear(prime_factor);
+    mpz_clear(power_of_2);
+    mpz_clear(perfect_number);
+}
+
 int main(int argc, char* argv[]) {
 
     double t0 = omp_get_wtime();
     int i = 0;
     int primelen = 0;
+
+    int num_primes_to_check = 100;
+
+    if (argc == 2) {
+        num_primes_to_check = std::stoi(argv[1]);
+        std::cout << "Checking the first " << num_primes_to_check << " primes.\n";
+    }
+
     uint64_t* primearray = bitmap_to_array( run_sequential_sieve(N), N, primelen);
     std::cout << "Found all primes below " << N << std::endl;
     std::cout << "Array length: " << primelen << std::endl;
@@ -97,8 +131,8 @@ int main(int argc, char* argv[]) {
             std::cout << p << '\t' << uint64_t(p * pow(2, primearray[i] - 1));
             std::cout << std::endl;
 
-            //f_pn << std::fixed << p << '\t' << int64_t(p * pow(2, primearray[i] - 1));
-            //f_pn << std::endl;
+            f_pn << int64_t(p * pow(2, primearray[i] - 1));
+            f_pn << "\n\n";
         }
     }
 
@@ -112,48 +146,82 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << num_threads << " threads available.\n";
-
-    std::list<std::string> perfnumlist;
+    std::list<int>* hits = new std::list<int>[num_threads];    
 
     // check if each prime number p, results in a Mersenne prime
-    for (i = 16; i < 650; i++) {
-
-        uint64_t p = primearray[i];
-
-        std::cout << "----------------------------\n";
-        std::cout << "i = " << i << '\t' << "p = " << p << '\n';
+    #pragma omp parallel 
+    {
+        int thread_ID = omp_get_thread_num();
         
-        //Initialize prime_factor, and set it to 2**p - 1
-        mpz_t prime_factor;
-        mpz_init(prime_factor);
-        mpz_ui_pow_ui(prime_factor, 2, p);
-        mpz_sub_ui(prime_factor, prime_factor, 1);
+        #pragma omp for private(i) schedule(dynamic)
+        for (i = 16; i < num_primes_to_check; i++) {
 
-        uint64_t pfui = mpz_get_ui(prime_factor);
-        std::cout << "2^p - 1 = " << pfui << '\n';
+            uint64_t p = primearray[i];
 
-        //Check if prime_factor is actually prime
+            //std::cout << "----------------------------\n";
+            //std::cout << "i = " << i << '\t' << "p = " << p << '\n';
+            
+            //Initialize prime_factor, and set it to 2**p - 1
+            mpz_t prime_factor;
+            mpz_init(prime_factor);
+            mpz_ui_pow_ui(prime_factor, 2, p);
+            mpz_sub_ui(prime_factor, prime_factor, 1);
 
-        if ( mpz_probab_prime_p(prime_factor, 20) >= 1) {
-            // Initialize and set power_of_2 to 2**(p - 1)
-            mpz_t power_of_2;
-            mpz_init(power_of_2);
-            mpz_ui_pow_ui(power_of_2, 2, p - 1);
+            uint64_t pfui = mpz_get_ui(prime_factor);
+            //std::cout << "2^p - 1 = " << pfui << '\n';
 
-            //multiply to find the perfect number
-            mpz_t perfnum;
-            mpz_init(perfnum);
-            mpz_mul(perfnum, prime_factor, power_of_2);
+            //Check if prime_factor is actually prime
 
-            mpz_out_str(NULL, 10, perfnum);
-            std::cout << " is a perfect number.\n";
+            if ( mpz_probab_prime_p(prime_factor, 30) >= 1) {
+                // Initialize and set power_of_2 to 2**(p - 1)
+                mpz_t power_of_2;
+                mpz_init(power_of_2);
+                mpz_ui_pow_ui(power_of_2, 2, p - 1);
+
+                //multiply to find the perfect number
+                mpz_t perfnum;
+                mpz_init(perfnum);
+                mpz_mul(perfnum, prime_factor, power_of_2);
+
+                //mpz_out_str(NULL, 10, perfnum);
+                //std::cout << " is a perfect number.\n";
+
+                hits[thread_ID].push_back(p);
+            }
+
+            else {
+                //std::cout << "not a perfect number\n";
+            }
+
+            mpz_clear(prime_factor);
         }
+    }
 
-        else {
-            std::cout << "not a perfect number\n";
+    int count = 0;
+    for (int j = 0; j < num_threads; j++) {
+        for (int n : hits[j]) { 
+            //std::cout << n << ", ";
+            //todo: collect these values of p in a single list and sort it.
+            count++;
         }
+        //std::cout << "}\n";
+    }
 
-        mpz_clear(prime_factor);
+    std::cout << count + 8 << " perfect numbers found.\n";
+    std::vector<uint64_t> pvalues = {};
+
+    for (int j = 0; j < num_threads; j++) {
+        for (int n : hits[j]) { 
+            pvalues.push_back(n);
+        }
+        //std::cout << "}\n";
+    }
+
+    std::sort(pvalues.begin(), pvalues.end());
+
+    for (int j = 0; j < count; j++) {
+        std::string s = output_perfnum(pvalues[j]);
+        f_pn << s << "\n\n";
     }
 
     f_pn.close();
